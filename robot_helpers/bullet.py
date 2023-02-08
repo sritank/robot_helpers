@@ -1,9 +1,10 @@
 import numpy as np
 import pybullet as p
 
+import open3d as o3d
 from .perception import CameraIntrinsic
 from .spatial import Rotation, Transform
-
+import ipdb
 assert p.isNumpyEnabled(), "Pybullet needs to be built with NumPy"
 
 
@@ -12,6 +13,7 @@ class BtPandaArm:
         self.base_frame = "panda_link0"
         self.ee_frame = "panda_hand"
         self.configurations = {"ready": [0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79]}
+        # ipdb.set_trace()
         self.uid = p.loadURDF(
             str(urdf_path),
             basePosition=pose.translation,
@@ -22,7 +24,15 @@ class BtPandaArm:
             p.resetJointState(self.uid, i, q_i)
 
     def get_state(self):
+        # ipdb.set_trace()
         joint_states = p.getJointStates(self.uid, range(p.getNumJoints(self.uid)))[:7]
+        q = np.asarray([state[0] for state in joint_states])
+        dq = np.asarray([state[1] for state in joint_states])
+        return q, dq
+
+    def get_state_all(self):
+        # ipdb.set_trace()
+        joint_states = p.getJointStates(self.uid, range(p.getNumJoints(self.uid)))
         q = np.asarray([state[0] for state in joint_states])
         dq = np.asarray([state[1] for state in joint_states])
         return q, dq
@@ -117,3 +127,37 @@ class BtCamera:
         depth = self.far * self.near / (self.far - (self.far - self.near) * result[3])
         mask = result[4]
         return color, depth, mask
+
+
+
+
+class CameraIntrinsic:
+    def __init__(self, width, height, fx, fy, cx, cy):
+        self.width = width
+        self.height = height
+        self.K = np.array([[fx, 0.0, cx], [0.0, fy, cy], [0.0, 0.0, 1.0]])
+
+    @property
+    def fx(self):
+        return self.K[0, 0]
+
+    @property
+    def fy(self):
+        return self.K[1, 1]
+
+    @property
+    def vfov(self):
+        return 2.0 * np.arctan(self.height / (2.0 * self.fy))
+
+    @property
+    def cx(self):
+        return self.K[0, 2]
+
+    @property
+    def cy(self):
+        return self.K[1, 2]
+
+    def to_o3d(self):
+        return o3d.camera.PinholeCameraIntrinsic(
+            self.width, self.height, self.fx, self.fy, self.cx, self.cy
+        )
