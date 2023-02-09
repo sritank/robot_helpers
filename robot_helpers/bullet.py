@@ -41,6 +41,11 @@ class BtPandaArm:
         for i, q_i in enumerate(q):
             p.setJointMotorControl2(self.uid, i, p.POSITION_CONTROL, q_i)
 
+    def set_desired_joint_positions_ur5(self, q):
+        ipdb.set_trace()
+        for i, q_i in enumerate(q):
+            p.setJointMotorControl2(self.uid, i+12, p.POSITION_CONTROL, q_i)
+
     def set_desired_joint_velocities(self, dq):
         for i, dq_i in enumerate(dq):
             p.setJointMotorControl2(
