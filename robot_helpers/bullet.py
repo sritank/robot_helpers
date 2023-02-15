@@ -13,6 +13,8 @@ class BtPandaArm:
         self.base_frame = "panda_link0"
         self.ee_frame = "panda_hand"
         self.configurations = {"ready": [0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79]}
+        #use this if there is a world joint
+        # self.configurations = {"ready": [0.0, 0.0, -0.79, 0.0, -2.356, 0.0, 1.57, 0.79]}
         # ipdb.set_trace()
         self.uid = p.loadURDF(
             str(urdf_path),
@@ -20,12 +22,14 @@ class BtPandaArm:
             baseOrientation=pose.rotation.as_quat(),
             useFixedBase=True,
         )
+        # ipdb.set_trace()
         for i, q_i in enumerate(self.configurations["ready"]):
             p.resetJointState(self.uid, i, q_i)
 
     def get_state(self):
         # ipdb.set_trace()
         joint_states = p.getJointStates(self.uid, range(p.getNumJoints(self.uid)))[:7]
+        # joint_states = p.getJointStates(self.uid, range(p.getNumJoints(self.uid)))[:8]
         q = np.asarray([state[0] for state in joint_states])
         dq = np.asarray([state[1] for state in joint_states])
         return q, dq
@@ -42,7 +46,7 @@ class BtPandaArm:
             p.setJointMotorControl2(self.uid, i, p.POSITION_CONTROL, q_i)
 
     def set_desired_joint_positions_ur5(self, q):
-        ipdb.set_trace()
+        # ipdb.set_trace()
         for i, q_i in enumerate(q):
             p.setJointMotorControl2(self.uid, i+12, p.POSITION_CONTROL, q_i)
 
@@ -116,11 +120,18 @@ class BtCamera:
         self.renderer = renderer
 
     def get_image(self, pose=None):
+        # ipdb.set_trace()
         if pose is None:
             r = p.getLinkState(self.body_uid, self.link_id, computeForwardKinematics=1)
             pose = Transform(Rotation.from_quat(r[5]), r[4])
         R, t = pose.rotation, pose.translation
+        # Original code
+        # view_mat = p.computeViewMatrix(t, R.apply([0, 0, 1]) + t, R.apply([0, -1, 0]))
+
+        # My change
         view_mat = p.computeViewMatrix(t, R.apply([0, 0, 1]) + t, R.apply([0, -1, 0]))
+        # view_mat = p.computeViewMatrix(t, R.apply([1, 0, 0])+t, R.apply([0, 0, 1]))
+
         result = p.getCameraImage(
             self.intrinsic.width,
             self.intrinsic.height,
@@ -128,6 +139,7 @@ class BtCamera:
             self.proj_mat,
             renderer=self.renderer,
         )
+        # ipdb.set_trace()
         color = result[2][:, :, :3]
         depth = self.far * self.near / (self.far - (self.far - self.near) * result[3])
         mask = result[4]
